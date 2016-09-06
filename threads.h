@@ -23,7 +23,7 @@
 #if defined(_MSC_VER)
 #define NORETURN __declspec(noreturn)  // Visual Studio compiler
 #else
-#define NORETURN _Noreturn			   // C11 standard
+#define NORETURN _Noreturn             // C11 standard
 #endif
 
 // type definitions -----------------------------------------------------------
@@ -31,12 +31,12 @@
 typedef int (*thrd_start_t)(void*);
 
 typedef struct thrd_t_s {
-	#ifdef __unix__
-		pthread_t thread;
-	#elif defined(_WIN32)
-		HANDLE thread;
-		DWORD threadId;
-	#endif
+    #ifdef __unix__
+        pthread_t thread;
+    #elif defined(_WIN32)
+        HANDLE thread;
+        DWORD threadId;
+    #endif
 } thrd_t;
 
 enum {
