@@ -26,6 +26,14 @@
 #define NORETURN _Noreturn             // C11 standard
 #endif
 
+#if defined _MSC_VER
+#define RESTRICT __declspec(restrict)
+#else
+#define RESTRICT restrict
+#endif
+
+
+
 // type definitions -----------------------------------------------------------
 
 typedef int (*thrd_start_t)(void*);
@@ -66,6 +74,37 @@ enum {
     mtx_timed     = 2
 };
 
+#ifdef __unix__
+    typedef pthread_once_t once_flag;
+    #define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
+#elif defined _WIN32
+    typedef LONG once_flag;
+    #define ONCE_READY 1    // function has not been called
+    #define ONCE_DONE 0     // function was called
+    #define ONCE_FLAG_INIT ONCE_READY
+#endif
+
+#ifdef __unix__
+    typedef pthread_cond_t cnd_t;
+#elif defined(_WIN32)
+    typedef CONDITION_VARIABLE cnd_t;
+#endif
+
+// thread local storage specifier
+#ifdef _MSC_VER
+#define thread_local __declspec(thread)
+#else
+#define thread_local _Thread_local
+#endif
+
+#ifdef __unix__
+    typedef pthread_key_t tss_t;
+#elif defined(_WIN32)
+    typedef DWORD tss_t;
+#endif
+
+typedef void (*tss_dtor_t)(void*);
+
 // thread functions -----------------------------------------------------------
 
 int thrd_create(thrd_t*, thrd_start_t, void*);
@@ -95,5 +134,35 @@ int mtx_timedlock(mtx_t *mutex, const struct timespec *time_point);
 int mtx_trylock(mtx_t *mutex);
 
 int mtx_unlock(mtx_t *mutex);
+
+void mtx_destroy(mtx_t *mutex);
+
+// call once ------------------------------------------------------------------
+
+void call_once(once_flag *flag, void (*func)(void));
+
+// condition variables --------------------------------------------------------
+
+int cnd_init(cnd_t *cond);
+
+int cnd_signal(cnd_t *cond);
+
+int cnd_broadcast(cnd_t *cond);
+
+int cnd_wait(cnd_t *cond, mtx_t *mutex);
+
+int cnd_timedwait(cnd_t *cond, mtx_t *mutex, const struct timespec *time_point);
+
+void cnd_destroy(cnd_t *cond);
+
+// thread specific storage (tss) ----------------------------------------------
+
+int tss_create(tss_t *tss_key, tss_dtor_t destructor);
+
+void* tss_get(tss_t tss_key);
+
+int tss_set(tss_t tss_key, void *val);
+
+void tss_delete(tss_t tss_key);
 
 #endif

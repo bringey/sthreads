@@ -3,7 +3,7 @@
 #include <errno.h>
 
 #include <stdio.h>
-
+#include <stdint.h>
 
 #if   defined(__unix__)
     #include <pthread.h>
@@ -23,7 +23,7 @@
 
     // Since WINAPI's thread start function type has a different signature,
     // A wrapper function is used, which will invoke the start function
-    // stored in the thread's startFunc member
+    // stored in a thrd_start_call_t pointer
     static DWORD WINAPI ThreadProcWrapper(LPVOID lpParam) {
         thrd_start_call_t *call = (thrd_start_call_t*)lpParam;
 
@@ -75,7 +75,6 @@ int thrd_create(thrd_t *thrd, thrd_start_t start, void *arg) {
             // block until any one of these happen:
             // 1. ThreadProcWrapper has accessed call, and sets the semaphore count from 0 -> 1
             // 2. the newly spawned thread has exited before #1 occurs (should not happen)
-            //HANDLE handles[] = { call.wrapperSemaphore, thrd->thread };
             HANDLE handles[2];
             handles[0] = call.wrapperSemaphore;
             handles[1] = thrd->thread;
@@ -135,11 +134,9 @@ int thrd_sleep(const struct timespec *timepoint, struct timespec *remaining) {
             printf("Diff: %lld | freq: %lld\n", diff, freq.QuadPart);
 
             if (diff >= 0) {
-                // diff / freq -> seconds
-                // diff * 1000 / freq -> millis
-                // diff * 1000000 / freq -> nano
-                remaining->tv_sec = diff / freq.QuadPart;
-                remaining->tv_nsec = (diff * 1000000000) / freq.QuadPart;
+                time_t secs = diff / freq.QuadPart;
+                remaining->tv_sec = timepoint->tv_sec - secs;
+                remaining->tv_nsec = timepoint->tv_nsec - (((diff - (freq.QuadPart * secs)) * 1000000000L) / freq.QuadPart);
             } else {
                 remaining->tv_sec = 0;
                 remaining->tv_nsec = 0;
@@ -163,7 +160,7 @@ void thrd_yield() {
 NORETURN void thrd_exit(int result) {
     // destroy all tss
     #ifdef __unix__
-        pthread_exit((void*)result);
+        pthread_exit((void*)(intptr_t)result);
     #elif defined(_WIN32)
         ExitThread(result);
     #endif
@@ -194,7 +191,7 @@ int thrd_join(thrd_t thr, int *res) {
             result = thrd_error;
         } else {
             if (res != NULL)
-                *res = (int)threadReturn;
+                *res = (intptr_t)threadReturn;
         }
     #elif defined(_WIN32)
         if (WaitForSingleObject(thr.thread, INFINITE) == WAIT_OBJECT_0) {
@@ -266,8 +263,14 @@ int mtx_timedlock(mtx_t *mutex, const struct timespec *time_point) {
     int result = thrd_success;
 
     #ifdef __unix__
+
+        int error = pthread_mutex_timedlock(mutex, time_point);
+        if (error)
+            result = (error == ETIMEDOUT) ? thrd_timedout : thrd_error;
+
     #elif defined(_WIN32)
-        DWORD ms = (time_point->tv_sec * 1000) + (time_point->tv_nsec / 10000000L);
+        //DWORD ms = (time_point->tv_sec * 1000) + (time_point->tv_nsec / 10000000L);
+		DWORD ms = timespecToMillis(time_point);
         DWORD waitResult = WaitForSingleObject(*mutex, ms);
         if (waitResult != WAIT_OBJECT_0)
             result = (waitResult == WAIT_TIMEOUT) ? thrd_timedout : thrd_error;
@@ -281,6 +284,11 @@ int mtx_trylock(mtx_t *mutex) {
     int result = thrd_success;
 
     #ifdef __unix__
+
+        int error = pthread_mutex_trylock(mutex);
+        if (error)
+            result = (error == EBUSY) ? thrd_busy : thrd_error;
+
     #elif defined(_WIN32)
 
         DWORD waitResult = WaitForSingleObject(*mutex, 0);
@@ -296,6 +304,8 @@ int mtx_unlock(mtx_t *mutex) {
     int result = thrd_success;
 
     #ifdef __unix__
+        if (pthread_mutex_unlock(mutex))
+            result = thrd_error;
     #elif defined(_WIN32)
         if (!ReleaseMutex(*mutex))
             result = thrd_error;
@@ -303,3 +313,76 @@ int mtx_unlock(mtx_t *mutex) {
 
     return result;
 }
+
+void mtx_destroy(mtx_t *mutex) {
+
+    #ifdef __unix__
+        pthread_mutex_destroy(mutex);
+    #elif defined(_WIN32)
+        CloseHandle(*mutex);
+    #endif
+
+}
+
+// call once ------------------------------------------------------------------
+
+
+void call_once(once_flag *flag, void(*func)(void)) {
+
+    #ifdef __unix__
+        pthread_once(flag, func);
+    #elif defined _WIN32
+
+        // whoever gets ONCE_READY first gets to call the function
+        if (InterlockedExchange(flag, ONCE_DONE) == ONCE_READY)
+            func();
+        
+
+    #endif
+
+}
+
+// condition variables --------------------------------------------------------
+
+int cnd_init(cnd_t *cond) {
+    return 0;
+}
+
+int cnd_signal(cnd_t *cond) {
+    return 0;
+}
+
+int cnd_broadcast(cnd_t *cond) {
+    return 0;
+}
+
+int cnd_wait(cnd_t *cond, mtx_t *mutex) {
+    return 0;
+}
+
+int cnd_timedwait(cnd_t *cond, mtx_t *mutex, const struct timespec *time_point) {
+    return 0;
+}
+
+void cnd_destroy(cnd_t *cond) {
+
+}
+
+// thread specific storage ----------------------------------------------------
+
+int tss_create(tss_t *tss_key, tss_dtor_t destructor) {
+    return 0;
+}
+
+void* tss_get(tss_t tss_key) {
+    return NULL;
+}
+
+int tss_set(tss_t tss_key, void *val) {
+    return 0;
+}
+
+void tss_delete(tss_t tss_key) {
+
+}
+
