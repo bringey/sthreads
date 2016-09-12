@@ -1,14 +1,17 @@
 
-DEFINES=
+OBJDIR=obj
+BINDIR=bin
 
-DEFINES+=-D_GNU_SOURCE
-
-CC=		gcc
+CC=			gcc
 CFLAGS=		-std=c11 -Wall -Wextra -pedantic -pthread
 OBJECTS=	threads.o test.o
+DEFINES=	-D_GNU_SOURCE
 
 test: $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $+ 
+	$(CC) $(CFLAGS) -o $(BINDIR)/$@ $+
 
-%.o: %.c
+sthreads: threads.o
+	ar -cvr $(BINDIR)/libsthreads.a $+
+
+$(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) $(DEFINES) -c $< -o $@
