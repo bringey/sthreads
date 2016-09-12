@@ -72,7 +72,8 @@ int thrd_create(thrd_t *thrd, thrd_start_t start, void *arg) {
             // todo: check GetLastError to determine if out of memory, etc
             result = thrd_error;
         } else {
-            // block until any one of these happen:
+            // thrd_create cannot return until the wrapper has finished accessing call (call exists on the stack)
+            // so block until any one of these happen:
             // 1. ThreadProcWrapper has accessed call, and sets the semaphore count from 0 -> 1
             // 2. the newly spawned thread has exited before #1 occurs (should not happen)
             HANDLE handles[2];
@@ -345,44 +346,52 @@ void call_once(once_flag *flag, void(*func)(void)) {
 // condition variables --------------------------------------------------------
 
 int cnd_init(cnd_t *cond) {
+    (void)cond;
     return 0;
 }
 
 int cnd_signal(cnd_t *cond) {
+    (void)cond;
     return 0;
 }
 
 int cnd_broadcast(cnd_t *cond) {
+    (void)cond;
     return 0;
 }
 
 int cnd_wait(cnd_t *cond, mtx_t *mutex) {
+    (void)cond; (void)mutex;
     return 0;
 }
 
 int cnd_timedwait(cnd_t *cond, mtx_t *mutex, const struct timespec *time_point) {
+    (void)cond; (void)mutex; (void)time_point;
     return 0;
 }
 
 void cnd_destroy(cnd_t *cond) {
-
+    (void)cond;
 }
 
 // thread specific storage ----------------------------------------------------
 
 int tss_create(tss_t *tss_key, tss_dtor_t destructor) {
+    (void)tss_key; (void)destructor;
     return 0;
 }
 
 void* tss_get(tss_t tss_key) {
+    (void)tss_key;
     return NULL;
 }
 
 int tss_set(tss_t tss_key, void *val) {
+    (void)tss_key; (void)val;
     return 0;
 }
 
 void tss_delete(tss_t tss_key) {
-
+    (void)tss_key;
 }
 
