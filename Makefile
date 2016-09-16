@@ -8,14 +8,14 @@ CC=			gcc
 CFLAGS=		-std=c11 -Wall -Wextra -pedantic -pthread
 DEFINES=	-D_GNU_SOURCE
 
-LIB=$(BINDIR)/libsthreads.a
+.PHONY: all sthreads tests clean realclean
 
-TESTS=oncetest test
+all: sthreads
 
 # ==============================================================================
 # library target
 
-all: sthreads
+LIB=$(BINDIR)/libsthreads.a
 
 $(LIB): obj/threads.o
 	ar -cvr $(BINDIR)/libsthreads.a $+
@@ -24,6 +24,8 @@ sthreads: $(LIB)
 
 # =============================================================================
 # test programs
+
+TESTS=oncetest test
 
 tests: $(TESTS)
 

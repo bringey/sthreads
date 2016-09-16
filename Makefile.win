@@ -1,0 +1,45 @@
+
+OBJDIR=obj
+BINDIR=bin
+INCDIR=include
+SRCDIR=src
+
+CC=cl.exe
+CFLAGS=/W3 /I$(INCDIR) /nologo
+LINK=link.exe
+LINKFLAGS=/NOLOGO 
+MKLIB=lib.exe
+
+.SUFFIXES: .c .obj
+
+# ==============================================================================
+# library target
+
+
+LIBTARGET=$(BINDIR)\sthreads.lib
+
+$(LIBTARGET): $(OBJDIR)\threads.obj
+	$(MKLIB) /OUT:$(LIBTARGET) /NOLOGO $?
+
+sthreads: $(LIBTARGET)
+
+# =============================================================================
+# test programs
+
+TESTS=oncetest test
+
+tests: $(TESTS)
+
+test: $(OBJDIR)\test.obj $(LIBTARGET)
+#	$(CC) $(CFLAGS) /Fe$(BINDIR)\$@.exe $?
+	$(LINK) $(LINKFLAGS) /OUT:$(BINDIR)\$@.exe $?
+
+oncetest: $(OBJDIR)\oncetest.obj $(LIBTARGET)
+	$(LINK) $(LINKFLAGS) /OUT:$(BINDIR)\$@.exe $?
+
+# =============================================================================	
+# utils
+
+# source file to object file
+{$(SRCDIR)}.c{$(OBJDIR)}.obj::
+	$(CC) /Fo$(OBJDIR)\ /c $(CFLAGS) $<
